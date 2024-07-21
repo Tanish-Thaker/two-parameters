@@ -1,0 +1,61 @@
+---
+title: "Two Parameters"
+author: "Tanish Thaker"
+format: html
+execute: 
+  echo: false
+---
+
+```{r}
+library(tidyverse)
+library(primer.data)
+library(tidybayes)
+library(brms)
+library(gtsummary)
+```
+
+```{r}
+nhanes |> 
+  filter(sex == "Male", age >= 18) |> 
+  select(height) |> 
+  drop_na()|>
+  ggplot(aes(x = height)) + 
+    geom_histogram(bins = 50) +
+    labs(title = "Male Adult Height in the US in 2010", 
+         x = "Height (cm)", y = "Count",
+         caption = "Source: National Health and Nutrition Examination Survey")
+```
+
+```{r}
+#| cache: TRUE
+fit_male_height <- brm(formula = height ~ 1,
+  data = ch5,
+  family = gaussian(),
+  silent = 2,
+  refresh = 0,
+  seed = 12)
+```
+
+```{r}
+tbl_regression(fit_male_height, intercept = TRUE)
+```
+
+```{r}
+#| label: plot
+ndata <- tibble(.rows = 1)
+fit_male_height|> 
+  add_predicted_draws(newdata = ndata)|> 
+  ggplot(aes(x = .prediction)) +
+    geom_histogram(aes(y = after_stat(count / sum(count)), bins = 100))+
+    labs(title = "Male Adult Height in the US in 2010") + 
+    scale_x_continuous(labels = scales::number_format()) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1))
+```
+
+```{r}
+fit_male_height |> 
+  add_predicted_draws(newdata = ndata)|> 
+  mutate(tall = if_else(.prediction > 180, TRUE, FALSE))|> 
+  summarize(odds = mean(tall))
+```
+
